@@ -13,7 +13,7 @@
    - ai-dial-adapter-vertexai: `0.36.0`
    - ai-dial-adapter-dial: `0.15.0`
    - ai-dial-chat-themes: `0.16.0`
-   - ai-dial-chat: `0.46.0`
+   - ai-dial-chat: `0.46.2`
    - ai-dial-core: `0.44.4`
    - ai-dial-analytics-realtime: `0.24.1`
    - ai-dial-rag: `0.42.0`
@@ -24,7 +24,7 @@
    - ai-dial-quickapps-backend: `0.8.0`
    - ai-dial-mind-map-backend: `0.14.1`
    - ai-dial-mind-map-frontend: `0.13.0`
-   - ai-dial-admin-backend: `0.17.0`
+   - ai-dial-admin-backend: `0.17.1`
    - ai-dial-admin-frontend: `0.17.1`
    - ai-dial-admin-deployment-manager-backend: `0.17.0`
 
@@ -139,144 +139,11 @@
 
 ---
 
-#### ai-dial-chat `0.46.0`
+#### ai-dial-chat `0.46.2`
 
 ## Features
 
-* Add error toast when a model or agent fails to be added to `installed_deployments.json` (Issue #6523) (#6522)
-* Show visual indicator on the filter panel when filters are collapsed (Issue #6393) (#6493)
-* [Preview] Align user messages to the end of the chat column via the `user-message-align-end` feature flag — uses logical CSS properties so RTL layout mirrors correctly (Issue #6775) (#6778)
-* Add additional audio format support to the in-chat audio player (Issue #6472) (#6614)
-* Switch applications to the `dial-app` toolset type (previously `dial-deployment`) and add MCP configuration view for applications that support the `connect-mcp` feature (Issue #6517) (#6742)
-* Show an error message on an image attachment when the referenced file has been deleted (Issue #820) (#6658)
-* Display token usage limits in the model detail view on the Marketplace (Issue #6536) (#6633)
-* Render the instructions field as Markdown in the Quick App review window (Issue #6200) (#6698)
-* Allow operators to configure the default preferred order of audio recording formats (Issue #6527) (#6532)
-* Add a time-awareness setting to the Quick App editor (Issue #6516) (#6788)
-* Include a `traceId` in error toast messages after failed API calls — surfaces the backend trace for easier incident lookup (Issue #5196) (#6662)
-* Enable voice input while editing an existing user message (Issue #6466) (#6607)
-* Use date-first format for exported conversation archive filenames to improve alphabetical sort order (Issue #6602) (#6663)
-* Fix batch file deletion to correctly remove nested items when a parent folder is deleted (Issue #6702) (#6718)
-* Hide the microphone button when the most recent agent message contains an error (Issue #6456) (#6696)
-* Integrate the PDF highlighter into the chat attachment viewer (Issue #6625) (#6621)
-* Support configurable logo and favicon for custom branding deployments (Issue #6600) (#6600)
-* Add Quick App skills support (Issue #6513) (#6685)
-* Update the publication request path title to reflect publish, unpublish, or mixed states (Issue #2150) (#6630)
-* Rename Quick App 2.0 toolset field names to align with updated schema (Issue #6695) (#6714)
-* [Overlay] Add floating panel toggle buttons for the conversations and prompts sidebars — rendered in the top corners when the DIAL header is hidden, controlled by the `conversations-panel-toggle` and `prompts-panel-toggle` feature flags (Issue #6710) (#6791)
-
-## Fixes
-
-* Fix auto-selection for nested files and folders (Issue #4484) (#6586)
-* Align the downloaded files archive filename format with conversation and prompt export naming (Issue #5687) (#6535)
-* Support AzureB2C CIAM tokens that emit `email` as a string instead of `emails` as an array, fixing an auth failure for CIAM-backed tenants (Issue #6594) (#6595)
-* Correct logo source selection so the right logo variant loads for dark and light themes (Issue #6600) (#6616)
-* Enforce UTF-8 byte-based limits for entity names — replaces the old 160-character limit to prevent overflows with multi-byte characters (e.g. Cyrillic) on S3/GCS/Azure/MinIO backends (Issue #3808) (#6613)
-* Add checkboxes to the table attachment view (Issue #6482) (#6667)
-* Restore the context menu in the select-folder modal (Issue #5737) (#6624)
-* Include the environment name in exported files archive filenames (Issue #5687) (#6593)
-* Add top margin to the modal header to prevent overlap (Issue #6520) (#6556)
-* Add padding to conversation intro text (Issue #6512) (#6620)
-* Add scroll to the application card in the Marketplace (Issue #6576) (#6578)
-* Show a tooltip for long values in PDF attachments (Issue #6781) (#6784)
-* Fix overly aggressive word-break in model descriptions (Issue #6538) (#6555)
-* Replace the publication filter icon button with the correct icon style (Issue #6571, #1775) (#6577)
-* Rename Quick App field labels to match the updated spec (Issue #6521) (#6634)
-* Fix redirect logic for isolated-model routes (Issue #4985) (#6632)
-* Update "Remove access" button appearance (Issues #6429, #6499) (#6669)
-* Fix duplicate toolset action menu entries — deduplicate ordering (Issue #6540) (#6554, #6584)
-* Copy user-attached review files to the review bucket when submitting a publication request (Issue #6387) (#6592)
-* Fix Content Security Policy headers (#6651, `dix csp` commit)
-* Fix 404 redirect when the completion URL inside the apps editor returns a 404 (Issue #6727) (#6794, #6825)
-* Fix Overlay `setOverlayOptions` theme application so it correctly applies the theme after initialization (Issue #6721) (#6722)
-* Fix shared files disappearing from folders after switching between File Manager tabs (Issue #6638) (#6648)
-* Fix accepting your own share link triggering an error (Issue #6164) (#6709)
-* Fix copy-paste of a space into a conversation starter field adding a blank starter (Issue #6353) (#6787)
-* Fix token usage display UI issues in the application card (Issue #6536) (#6790)
-* Fix auto-select requirements check (Issue #6463) (#6725)
-* Fix cursor always jumping to end of field when editing user messages with voice input active (Issue #6466) (#6797)
-* Fix File Manager change-path view (Issue #5606) (#6789)
-* Fix hidden files being incorrectly blocked when attaching files (Issue #6260) (#6774)
-* Fix multiple skills validation issues (Issues #6763, #6766, #6762, #6769, #6779, #6765) (#6786)
-* Fix skills schema validation (Issues #6757, #6752) (#6808)
-* Fix several microphone button UI inconsistencies — wrong visibility in replay mode and error state (Issues #6456, #6484) (#6759)
-* Fix the "blinking" transition when editing a user message while switching from stop-recording to start-transcription (Issue #6466) (#6767)
-* Fix modal tooltip positioning (Issue #6781) (#6793)
-* Set `mcp` as the default transport for `dial-app` toolsets (Issue #6517) (#6804)
-* Support legacy Quick App 2 field names alongside the new ones; remove form-only fields from the API payload (Issue #6695) (#6719)
-* Fix byte-count vs. character-count mismatch in the entity name error message (Issue #6803) (#6818)
-* Fix disappeared assistant message action buttons (Issue #6822) (#6830)
-* Fix disappearing "unavailable model" hint when saving an app (Issue #5244) (#6771)
-* Fix mobile: chat header action buttons now left-align correctly (Issue #6824) (#6831)
-* Fix empty publication requests not loading (Issue #4919) (#6494)
-* Fix empty value placeholder in the upload-device modal (Issue #1330) (#6626)
-* Fix error toast when sharing an application with a public resource fails (Issue #5480) (#6636)
-* Fix File Manager change-path panel design (Issue #5606) (#6611)
-* Fix filter indicator padding (#6590)
-* Fix grouped visualizer iframe rendering double on mount (#6528)
-* Fix hover state styles on select components (Issue #6627) (#6668, #6678)
-* Fix instructions field showing as single line in the Quick App review modal (Issue #6200) (#6760)
-* Fix console error exposing internal DIAL core and bucket URLs (Issue #6684) (#6708)
-* Fix microphone icon shown in Replay mode (Issue #6484) (#6673)
-* Fix modal dividers (Issue #6840) (#6841)
-* Fix modal size (Issue #6542) (#6581)
-* Fix Monaco editor behaviour for empty folders (Issues #6222, #6223) (#6585)
-* Fix new starter not saving when text contains only spaces (Issue #6353) (#6591)
-* Fix stale file list not reflecting deletions without a page refresh (Issue #5706) (#6491)
-* Fix PDF highlighter display issues (Issue #6625) (#6733)
-* Fix prompt content height overflow (Issue #6764) (#6780)
-* Fix Quick App review flow when the orchestrator deployment does not advertise `temperature` support (regression fix) (Issue #6637) (#6640)
-* Fix reset of selected toolset not working (Issue #6464) (#6730)
-* Fix folder-level publication rules not appearing when an admin updates a publishing request (Issue #5833) (#6690)
-* Fix select component height (Issue #6691) (#6693, #6712)
-* Fix selection highlight styles (Issue #5611) (#6717, #6731)
-* Fix share limit exceeded error message (Issue #5291) (#6572)
-* Fix model selector tooltip not showing correctly (Issue #6609) (#6713, #6735)
-* Fix icon size for local custom icons in `IconButton` (Issue #6513) (#6738)
-* Fix long start button text being clipped (Issue #6503) (#6518)
-* Fix switcher toggle colors (Issue #6618) (#6622, #6653, #6749)
-* Fix sub-folder search not returning results (Issue #6426) (#6433)
-* Fix switch color (#6798)
-* Fix app runner name being truncated in the UI (Issue #6676) (#6707)
-* Fix application icon not updating when an admin edits a publication (Issue #6656) (#6674)
-* Fix incorrect `isolatedModelId` sanitization when creating new conversations (Issue #4985) (#6654)
-* Fix wrong 404 error surfaced from a completion URL (Issue #6220) (#6703)
-* Hide the replay button for shared conversations (#6629)
-* Remove colon from entity list titles (Issue #6543) (#6548)
-* Remove N/A version display from model cards (Issue #6526) (#6579)
-* Remove blurred icon outlines in Firefox (Issue #6649) (#6770)
-* Fix attach-folder logic for nested selection (Issue #4484) (#6641)
-* Fix button alignment in modal footer (Issue #6650) (#6724)
-* Fix change-remove-access button appearance (Issues #6429, #6499) — follow-up to #6669 (#6675 ui-kit update)
-* Fix user name resolution for AzureB2C `name` claim (Issue #6587) (#6589)
-* Fix empty file folder deletion (Issue #6561) (#6597)
-* Fix delete icon missing for empty files folder (Issue #6561)
-* Open conversations sidebar by default when the `ShowConversationsSectionByDefault` feature is active in Overlay mode (Issue #6880) (#6883)
-
-## Other
-
-* Upgrade `next` to `16.2.6` to address high-severity advisories: GHSA-8h8q-6873-q5fj (DoS via Server Components), GHSA-267c-6grr-h53f and GHSA-26hh-7cqf-hhc6 (middleware/proxy bypass via segment-prefetch), GHSA-mg66-mrh9-m8jx (DoS via cache connection exhaustion), GHSA-492v-c6pp-mqqv (dynamic route parameter injection bypass), GHSA-c4j6-fc7j-m34r (SSRF via WebSocket upgrades), GHSA-36qx-fr4f-26g5 (i18n proxy bypass) (#6677)
-* Bump `qs` and `express` to address stringify-related correctness issues (#6854)
-* Bump `@epam/ai-dial-ui-kit` (#6872)
-* Bump `tiktoken` (Issue #6506) (#6529)
-* Update CI to use trusted publishing to npm registry (#6885)
-* Bump vitest from 4.0.9 to 4.1.8 (https://github.com/epam/ai-dial-chat/pull/6977)
-
-## Deployment Changes
-
-### New environment variables
-
-| Variable | Default | Description |
-|---|---|---|
-| `NEXT_PUBLIC_RESOURCE_MAX_SEGMENT_BYTES` | `255` | Maximum UTF-8 byte length of a single path segment in entity names (files, folders, conversations). Must be a positive integer less than 1024. Must be set at **build time** (Next.js public env). |
-
-### Behavioral changes
-
-> [!NOTE]
-> Applications now use the `dial-app` toolset type internally (previously `dial-deployment` and `dial-mcp`). No operator action needed; models continue to use `dial-deployment`.
-
-- **dial-app toolset type** — applications and toolset configuration view (Issue #6517) (#6742)
-- **Entity name byte limits** — entity name validation now enforces UTF-8 byte budgets (max 255 bytes per path segment by default, configurable via `NEXT_PUBLIC_RESOURCE_MAX_SEGMENT_BYTES`) instead of the previous 160-character limit (Issue #3808) (#6613)
+* (chat) add singleton keep-alive agents (#7208)
 
 ---
 
@@ -476,47 +343,12 @@ Initial version
 
 ---
 
-#### ai-dial-admin-backend `0.17.0`
-
-## UPGRADE TO NEW RELEASE ##
-**Please review [upgrade plan](https://github.com/epam/ai-dial-admin-backend/blob/0.17.0/docs/upgrade-plans/0.17.0.md) before new release installation.**
-
-## INFRASTRUCTURE CHANGELOG ##
-**Please review [infrastructure changelog](https://github.com/epam/ai-dial-admin-backend/blob/0.17.0/docs/INFRA-CHANGELOG.md) before new release installation.**
-
-## BREAKING CHANGES (configuration)
-
-* #783 Removed deprecated `allowedRoles` config property and changed default `config.rest.security.default.roles-mapping` from `{}` to `{"ConfigAdmin":["FULL_ADMIN"],"admin":["FULL_ADMIN"]}` (#943)
-See [Changed Security & RBAC](https://github.com/epam/ai-dial-admin-backend/blob/0.17.0/docs/INFRA-CHANGELOG.md#security--rbac), [Removed Security & RBAC](https://github.com/epam/ai-dial-admin-backend/blob/0.17.0/docs/INFRA-CHANGELOG.md#security--rbac-1)
-* #773 Removed default page size for analytics queries: `METRICS_INFLUX2_DEFAULT_PAGE_SIZE` and `METRICS_INFLUX3_DEFAULT_PAGE_SIZE` env vars are no longer supported (#984)
-See [Removed Observability](https://github.com/epam/ai-dial-admin-backend/blob/0.17.0/docs/INFRA-CHANGELOG.md#observability)
-
-## Features
-
-* #940 Supported several OAuth token endpoint auth methods in toolset: `HTTP Basic Authentication`, `HTTP Request Body`, `None (clientSecret is not provided)` (#996)
-* #986 Supported `in` filter operator for historical queries: `getRevisions`, `getAuditActivities` (#990)
-* #895 Included uniqueness conflict validation into import results for toolsets, applications, and files instead of failing the request (#949, #980)
-* #896 Added "Conversation" as a managed asset (#965)
-* #908 Transferred tools retrieval to the new `/v1/toolset/{path}/tools` Core endpoint (#991)
-* #1011 Supported `id` for model upstreams (#1012)
-* Added new `/api/v1/deployments` endpoint to get Core deployments, supports `interface_types` and `deployment_types` filters in query params (#982)
-
-## Fixes
-
-* #1003 Handled `null` version in path for "Conversation" approvals (#1002)
-* #1004 Added `source` field to the applications listing response (#1005)
-* #1014 Adjusted "Sync with core" functionality for Routes to prevent "Out of sync" status (#1016)
-* #1019 Prevented duplicate IDs between interceptors and deployments (#1020, #1021)
-* epam/ai-dial-admin-frontend#3451 Allowed `STRING`/`UUID` type coercion in query-language filters (#989)
-* Fixed docs for release 17 (#1018)
+#### ai-dial-admin-backend `0.17.1`
 
 ## Other
-
-* improve config filtering against Core version (#951)
-* bump org.apache.tomcat.embed:tomcat-embed-core from 11.0.21 to 11.0.22 (#983)
-* bump the ai-dial-ci group with 4 updates (#972, #992, #1009)
-* bump the github-actions group across 1 directory with 2 updates (#973, #993)
-* add documentation for 0.17.0 release (#1008)
+* bump netty-handler and netty-codec-http2/transport-native-epoll to 4.2.15.Final, and netty-resolver-dns/netty-codec-dns to 4.1.135.Final. (#1044)
+* upgrade runtime image to eclipse-temurin:21-jre-alpine (#1050)
+* pin OpenSSL packages to 3.5.7-r0 to patch CVE-2026-45447 (#1055)
 
 ---
 
