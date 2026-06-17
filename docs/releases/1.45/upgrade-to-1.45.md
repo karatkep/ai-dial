@@ -13,9 +13,9 @@
    - ai-dial-adapter-vertexai: `0.36.0`
    - ai-dial-adapter-dial: `0.15.0`
    - ai-dial-chat-themes: `0.16.0`
-   - ai-dial-chat: `0.46.2`
+   - ai-dial-chat: `0.46.3`
    - ai-dial-core: `0.44.4`
-   - ai-dial-analytics-realtime: `0.24.1`
+   - ai-dial-analytics-realtime: `0.24.2`
    - ai-dial-rag: `0.42.0`
    - ai-dial-log-parser: `0.3.0`
    - ai-dial-code-interpreter: `0.2.0`
@@ -139,11 +139,11 @@
 
 ---
 
-#### ai-dial-chat `0.46.2`
+#### ai-dial-chat `0.46.3`
 
 ## Features
 
-* (chat) add singleton keep-alive agents (#7208)
+* (chat) add optimistic load for the default model (#7259) (#7260)
 
 ---
 
@@ -155,12 +155,15 @@
 
 ---
 
-#### ai-dial-analytics-realtime `0.24.1`
+#### ai-dial-analytics-realtime `0.24.2`
+
+## Fixes
+
+* avoid UnboundLocalError when only INFLUX_DATABASE is set (#268)
 
 ## Other
 
-* bump fastapi, starlette and pydantic (#264)
-* bump transformers 5.0.0rc3 to 5.3.0 (#263)
+* bump starlette to 1.3.1 and add httpx2 for tests (#269)
 
 ---
 
