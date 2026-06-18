@@ -40,8 +40,6 @@
 
 #### ai-dial-quickapps-backend `0.8.0`
 
-## Deployment Changes
-
 ### New environment variables
 
 | Variable                             | Default    | Description                                                                                                                                                                                                                                     |
@@ -81,8 +79,6 @@
 ---
 
 #### ai-dial-admin-deployment-manager-backend `0.17.0`
-
-## Deployment Changes
 
 This release includes **many critical and high-priority changes**. Please review the [full upgrade guide](https://github.com/epam/ai-dial-admin-deployment-manager-backend/blob/0.17.0/docs/upgrade-plans/0.17.0.md) before proceeding.
 
