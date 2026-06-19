@@ -42,12 +42,11 @@
 
 #### Cross-component notes
 
-- ai-dial-quickapps-backend 0.8.0 requires a coordinated change to ai-dial-core configuration: remove the quick_apps2-style global routes entry for /v1/configuration-support/* from DIAL Core's routes block AND add the new dial:applicationTypeRoutes block to the QuickApps entry under applicationTypeSchemas — upgrade both components together and apply the DIAL Core config change atomically with the QuickApps backend upgrade to avoid the endpoints becoming unreachable.
-- ai-dial-admin-deployment-manager-backend 0.17.0 adds API-key authentication by validating the 'Api-Key' header against ai-dial-core's /v1/user/info endpoint — ensure network connectivity and valid credentials between ai-dial-admin-deployment-manager-backend and ai-dial-core are in place before upgrading.
-- ai-dial-adapter-openai 0.40.0 deprecates DIAL_USE_FILE_STORAGE: DIAL Storage is now auto-enabled whenever DIAL_URL is set, which means any deployment that previously set DIAL_USE_FILE_STORAGE=false to disable storage must now either unset DIAL_URL or take explicit action to prevent storage from being auto-enabled — audit all OpenAI adapter deployments for this env var before upgrading.
-- ai-dial-chat-themes 0.16.0 updates favicon and logo assets for both DIAL Admin and DIAL Chat — deployments using custom theme overrides for ai-dial-chat or ai-dial-admin-frontend should verify the new default assets do not conflict with or silently override their custom branding.
-- ai-dial-admin-deployment-manager-backend 0.17.0 is a critical-severity release with multiple breaking changes (NODE_POOLS format rewrite, roles-mapping migration) and a mandatory external upgrade guide — review https://github.com/epam/ai-dial-admin-deployment-manager-backend/blob/0.17.0/docs/upgrade-plans/0.17.0.md before upgrading any other component that depends on deployment manager, and upgrade this component last after all config changes are prepared.
-- ai-dial-quickapps-backend 0.8.0 graduates Time Awareness and DIAL Prompt Skills features to GA, making them unconditionally active in all QuickApps regardless of ENABLE_PREVIEW_FEATURES — review all app manifests and verify behavior in staging before upgrading production, particularly for deployments that previously relied on ENABLE_PREVIEW_FEATURES being unset to suppress these features.
+- ai-dial-quickapps-backend 0.8.0 requires a mandatory change to ai-dial-core config: remove the legacy quick_apps2-style global routes entry for /v1/configuration-support/* and add the new dial:applicationTypeRoutes block to the QuickApps entry under applicationTypeSchemas (see PR #319 for exact snippet); failure to do so will silently break all configuration-support endpoints.
+- ai-dial-admin-deployment-manager-backend 0.17.0 adds API-key authentication by validating the Api-Key header against ai-dial-core's /v1/user/info endpoint — ensure ai-dial-core is upgraded and reachable before deploying ai-dial-admin-deployment-manager-backend 0.17.0, otherwise API-key auth will fail.
+- ai-dial-adapter-openai 0.40.0 deprecates DIAL_USE_FILE_STORAGE: if this was previously set to false/unset to keep DIAL storage disabled, that is no longer sufficient — storage is now auto-enabled whenever DIAL_URL is set, so remove DIAL_URL from ai-dial-adapter-openai's config if storage must remain disabled.
+- ai-dial-chat-themes 0.16.0 adds new default logos and favicons for both DIAL Admin and DIAL Chat — teams using ai-dial-admin-frontend or ai-dial-chat with custom theme overrides should verify these new asset defaults do not conflict with their customisations after upgrading ai-dial-chat-themes.
+- ai-dial-admin-deployment-manager-backend 0.17.0 contains multiple critical breaking changes (NODE_POOLS format overhaul, roles config removal) with a mandatory external upgrade guide — review https://github.com/epam/ai-dial-admin-deployment-manager-backend/blob/0.17.0/docs/upgrade-plans/0.17.0.md in full before upgrading any component in this release, as misconfigured NODE_POOLS or missing roles-mapping will break all managed deployments.
 
 ### ai-dial-admin-deployment-manager-backend
 
@@ -56,46 +55,42 @@
 
 #### Breaking changes
 
-**NODE_POOLS config format changed: label-key/capacity replaced with explicit Kubernetes scheduling primitives; now a YAML document**
+**NODE_POOLS config format changed from label-key/capacity to explicit Kubernetes scheduling primitives; new YAML document format required**
 
-The NODE_POOLS environment variable/config previously used label-key/capacity configuration. It is now a YAML document supporting explicit 'nodeSelector', 'affinity', and 'tolerations' primitives per pool. Additionally, new create-time default fields NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL have been introduced.
-
-| Previous configuration | Required action |
-|---|---|
-| NODE_POOLS configured with label-key/capacity format | Rewrite NODE_POOLS as a YAML document using explicit 'nodeSelector', 'affinity', and 'tolerations' primitives per pool. Set NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL as needed for create-time defaults. |
-
-**Removed deprecated config properties 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles'**
-
-The previously deprecated config properties 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles' have been fully removed. Operators must migrate to the 'roles-mapping' mechanism.
+The NODE_POOLS configuration has been replaced with a YAML document that uses explicit 'nodeSelector', 'affinity', and 'tolerations' primitives per pool. Two new create-time default fields, NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL, have been added. The previous label-key/capacity format is no longer valid.
 
 | Previous configuration | Required action |
 |---|---|
-| 'config.rest.security.default.allowedRoles' or 'providers.*.allowed-roles' present in configuration | Remove these properties and migrate access-control configuration to the 'roles-mapping' construct. Consult the full upgrade guide for 'roles-mapping' syntax. |
+| NODE_POOLS configured with label-key/capacity format | Migrate NODE_POOLS to YAML document format using explicit 'nodeSelector', 'affinity', and 'tolerations' primitives per pool. Set NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL as needed for create-time defaults. |
 
-#### Environment variables with changed defaults
+**Removed deprecated 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles' config properties**
 
-| Variable | Old default | New default | Description |
-|---|---|---|---|
-| `NODE_POOLS` | `label-key/capacity format` | `YAML document with explicit nodeSelector/affinity/tolerations primitives per pool` | NODE_POOLS must now be supplied as a YAML document. The previous label-key/capacity schema is no longer accepted. |
+The previously deprecated config properties 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles' have been removed. Deployments must migrate to the 'roles-mapping' configuration.
+
+| Previous configuration | Required action |
+|---|---|
+| 'config.rest.security.default.allowedRoles' set in configuration | Remove 'config.rest.security.default.allowedRoles' and migrate role definitions to 'roles-mapping'. |
+| 'providers.*.allowed-roles' set in configuration | Remove 'providers.*.allowed-roles' entries and migrate role definitions to 'roles-mapping'. |
 
 #### New environment variables
 
 | Variable | Default | Required | Description |
 |---|---|---|---|
-| `NODE_POOL_DEFAULT` | — | No | Specifies the default node pool to stamp at create-time for resources when no explicit pool is specified. |
-| `NODE_POOL_DEFAULT_MODEL` | — | No | Specifies the default node pool to stamp at create-time for model resources. |
+| `NODE_POOL_DEFAULT` | — | No | Specifies the default node pool used at create time for deployments (introduced as part of the NODE_POOLS YAML document rework). |
+| `NODE_POOL_DEFAULT_MODEL` | — | No | Specifies the default node pool used at create time for model deployments (introduced as part of the NODE_POOLS YAML document rework). |
 
 #### Config / Helm changes
 
-- **Removed** `config.rest.security.default.allowedRoles`: Previously deprecated property for allowed roles under the default security config. Fully removed in this release.
-- **Removed** `providers.*.allowed-roles`: Previously deprecated per-provider allowed-roles property. Fully removed in this release.
-- **Added** `roles-mapping`: New mechanism for access-control role configuration, replacing the removed 'allowedRoles' and 'allowed-roles' properties.
+- **Removed** `config.rest.security.default.allowedRoles`: Previously deprecated property for allowed roles has been fully removed. Migrate to 'roles-mapping'.
+- **Removed** `providers.*.allowed-roles`: Previously deprecated per-provider allowed-roles property has been fully removed. Migrate to 'roles-mapping'.
+- **Default changed** `NODE_POOLS`: `label-key/capacity format` → `YAML document with explicit 'nodeSelector', 'affinity', and 'tolerations' primitives per pool` — The NODE_POOLS configuration format has changed. The previous label-key/capacity schema is no longer accepted; must be rewritten as a YAML document with Kubernetes scheduling primitives.
+- **Added** `roles-mapping`: Replacement for the removed 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles' properties. Role access control must now be configured here.
 
 > [!NOTE]
-> Node Pool Configuration GA: explicit Kubernetes scheduling primitives (nodeSelector, affinity, tolerations) per pool — Node Pool Configuration is now generally available. Each pool entry in the NODE_POOLS YAML document may define 'nodeSelector', 'affinity', and/or 'tolerations'. Create-time defaults are stamped via NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL.
+> New API-key authentication via DIAL Core added alongside existing JWT/OIDC — The service now validates the 'Api-Key' header against DIAL Core's '/v1/user/info' endpoint. This is additive — existing JWT/OIDC flows are unaffected — but DIAL Core connectivity must be available if API-key auth is used.
 
 > [!NOTE]
-> New API-key authentication via DIAL Core: 'Api-Key' header validated against Core's /v1/user/info — An additional authentication path has been added. The 'Api-Key' header is now validated against DIAL Core's '/v1/user/info' endpoint alongside the existing JWT/OIDC flow. Operators must ensure network connectivity and valid credentials between this service and DIAL Core if API-key auth is to be used.
+> Node Pool Configuration now GA with nodeSelector/affinity/tolerations per pool and create-time default stamping — Node pools are generally available. Each pool entry in the YAML document supports 'nodeSelector', 'affinity', and 'tolerations'. Create-time defaults are stamped via NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL.
 
 ### ai-dial-quickapps-backend
 
@@ -103,57 +98,39 @@ The previously deprecated config properties 'config.rest.security.default.allowe
 
 **DIAL Core global routes entry for /v1/configuration-support/* must be removed and replaced with dial:applicationTypeRoutes on the QuickApps application type** _(cross-component)_
 
-The /v1/configuration-support/* endpoints are no longer served via a global DIAL Core routes entry. They are now declared on the QuickApps application type via dial:applicationTypeRoutes. The old global route entry will be silently ignored, meaning the endpoints will be unreachable unless the new block is added.
+The /v1/configuration-support/* endpoints are no longer served via a global DIAL Core routes entry. They are now declared on the QuickApps application type itself via dial:applicationTypeRoutes. The old global entry will be silently ignored, meaning configuration-support endpoints will stop working unless the migration is performed.
 
 | Previous configuration | Required action |
 |---|---|
-| DIAL Core global routes block contains a quick_apps2-style entry for /v1/configuration-support/* | Remove the quick_apps2-style entry from DIAL Core's global routes block |
-| QuickApps entry under applicationTypeSchemas lacks dial:applicationTypeRoutes | Add the new dial:applicationTypeRoutes block to the QuickApps entry under applicationTypeSchemas using the schema snippet from PR #319 |
+| DIAL Core global routes block contains a quick_apps2-style entry for /v1/configuration-support/* | Remove the quick_apps2-style entry from DIAL Core's global routes block and add the new dial:applicationTypeRoutes block to the QuickApps entry under applicationTypeSchemas — apply the schema snippet from PR #319 verbatim |
 
-**Time Awareness and DIAL Prompt Skills features graduate to GA — now always active regardless of ENABLE_PREVIEW_FEATURES**
+**Time Awareness and DIAL Prompt Skills features now active regardless of ENABLE_PREVIEW_FEATURES**
 
-features.timestamp (Time Awareness) and the skills config field / DialPromptSkillsModule (DIAL Prompt Skills) are no longer gated by ENABLE_PREVIEW_FEATURES. They are active for all apps unconditionally after this upgrade.
+features.timestamp (Time Awareness) and the skills config field / DialPromptSkillsModule (DIAL Prompt Skills) have graduated to GA and are now always active. Previously they required ENABLE_PREVIEW_FEATURES to be enabled. Deployments that relied on ENABLE_PREVIEW_FEATURES=false to suppress these features will now have them active.
 
 | Previous configuration | Required action |
 |---|---|
-| ENABLE_PREVIEW_FEATURES was unset/false and Time Awareness / DIAL Prompt Skills were intentionally disabled | Review all app manifests — these features are now always on; ensure manifests do not inadvertently expose unwanted behavior |
-| ENABLE_PREVIEW_FEATURES was set to enable these features | No functional change; verify behavior in staging before upgrading production |
+| ENABLE_PREVIEW_FEATURES unset or false — Time Awareness and DIAL Prompt Skills were inactive | Accept that features.timestamp and skills/DialPromptSkillsModule are now always active; review app manifests for unintended use of these fields |
 
 #### New environment variables
 
 | Variable | Default | Required | Description |
 |---|---|---|---|
 | `DEFAULT_ORCHESTRATOR_DEPLOYMENT_ID` | — | No | Default DIAL deployment id used as the orchestrator model when a QuickApp manifest omits orchestrator.deployment. Also surfaces as the JSON-schema default for that field so DIAL Core can pre-fill new manifests. Apps can override per-app. |
-| `DEFAULT_FILE_LOADING_SIZE_LIMIT` | `10485760` | No | Deployment-wide cap (bytes, > 0; default 10 MiB) on files the agent downloads. Overridden per-app by features.file_loading.size_limit in the manifest. Replaces the previously hardcoded 10 MiB cap. |
+| `DEFAULT_FILE_LOADING_SIZE_LIMIT` | `10485760` | No | Deployment-wide cap in bytes (> 0; default 10 MiB) on files the agent downloads. Overridden per-app by features.file_loading.size_limit in the manifest. Replaces the previously hardcoded 10 MiB cap. |
 | `USE_SYSTEM_CA_CERTS` | — | No | When set to 1, merges every *.crt file under /certificates/ with the Alpine system CA bundle at container startup and exports SSL_CERT_FILE to the merged path so outbound HTTP calls trust private/corporate root CAs. Opt-in; unset keeps existing behaviour. |
 
 #### Config / Helm changes
 
-- **Removed** `DIAL Core global routes: quick_apps2-style /v1/configuration-support/* entry`: The global DIAL Core routes entry for /v1/configuration-support/* is no longer used and must be removed. It will be silently ignored if left in place, and the endpoints will not be served unless the new dial:applicationTypeRoutes block is added.
-- **Deprecated** `app manifest: DialDeploymentConfig.name` → `deployment_id`: Legacy key name in DialDeploymentConfig still validates via validation_alias and is retained in published JSON schema under anyOf, but will be removed in a future version.
-- **Deprecated** `app manifest: DialMCPToolSet.dial_id` → `deployment_id`: Legacy key dial_id in DialMCPToolSet still validates via validation_alias and is retained in published JSON schema under anyOf, but will be removed in a future version.
-- **Deprecated** `app manifest: display.stage.show = false` → `features.stage_display.level`: display.stage.show = false is still honored (treated as info level) with a warning, but is deprecated in favor of features.stage_display.level.
-- **Added** `applicationTypeSchemas.<quickapps-entry>.dial:applicationTypeRoutes`: New block required on the QuickApps application type entry in DIAL Core's applicationTypeSchemas to serve /v1/configuration-support/* endpoints. Must be added using the schema snippet from PR #319.
-- **Added** `applicationTypeSchemas.<quickapps-entry>.dial:attachmentPaths`: New field that lets DIAL Core enforce ACL on prompt URLs in skills/validate request bodies.
-- **Added** `app manifest: features.dial_files`: [Preview] Per-app opt-in for new DIAL files toolset exposing list_files, read_file_lines, search_in_file, write_file, edit_file, delete_file, copy_file, move_file. Supports optional enabled_tools allowlist.
-- **Added** `app manifest: features.stage_display.level`: New per-app threshold controlling which tool-execution stages surface in DIAL UI: error / info (default) / debug. Deprecates display.stage.show = false.
-- **Added** `app manifest: features.file_loading.size_limit`: Per-app override for the agent file download size limit in bytes. Overrides DEFAULT_FILE_LOADING_SIZE_LIMIT env var.
-- **Added** `app manifest: hooks`: [Preview] New array for config-driven synthetic tool-call injection. Declare (ASSISTANT/tool_calls, TOOL) injections without Python using on_request_start event with always / append_if_changed frequency.
-- **Added** `app manifest: override`: New optional field carrying a JSON Merge Patch (RFC 7396) for per-app overrides of predefined tool and toolset templates.
-- **Added** `predefined content layer: default_configuration.json`: Operators can ship a default_configuration.json at each predefined content layer (built-in + PREDEFINED_EXTRA_PATHS). Files are shallow-merged in layer order and exposed via GET /v1/configuration-support/default-configuration.
-- **Added** `dial-app toolset: transport`: New transport field (auto | mcp | chat-completion, default auto) on dial-app toolset config. Allows admins to pin routing to MCP or chat completion instead of auto-detecting via features.mcp.
+- **Removed** `routes.<quick_apps2-style entry>`: Global DIAL Core routes entry for /v1/configuration-support/* endpoints must be removed. It will be silently ignored if left in place, causing those endpoints to become unreachable.
+- **Deprecated** `DialDeploymentConfig.name` → `DialDeploymentConfig.deployment_id`: The name field in DialDeploymentConfig is deprecated in favour of deployment_id. Legacy key still validates via validation_alias and the published JSON schema retains a deprecated sibling under anyOf so existing manifests remain valid.
+- **Deprecated** `DialMCPToolSet.dial_id` → `DialMCPToolSet.deployment_id`: The dial_id field in DialMCPToolSet is deprecated in favour of deployment_id. Legacy key still validates via validation_alias.
+- **Deprecated** `features.stage_display (display.stage.show = false)` → `features.stage_display.level`: The legacy display.stage.show = false pattern is still honored at info level with a warning but is deprecated. Use the new features.stage_display.level (error/info/debug) instead.
+- **Added** `applicationTypeSchemas.<quickapps-entry>.dial:applicationTypeRoutes`: New block required in DIAL Core's applicationTypeSchemas for the QuickApps application type to serve /v1/configuration-support/* endpoints. Replaces the former global routes entry.
+- **Added** `applicationTypeSchemas.<quickapps-entry>.dial:attachmentPaths`: New field on the QuickApps application type entry letting DIAL Core enforce ACL on prompt URLs in skills/validate request bodies.
 
 > [!NOTE]
-> Time Awareness and DIAL Prompt Skills are now GA — active unconditionally — features.timestamp (Time Awareness) and the skills config field / DialPromptSkillsModule (DIAL Prompt Skills) are no longer gated by ENABLE_PREVIEW_FEATURES. Any deployment that previously relied on ENABLE_PREVIEW_FEATURES being unset to suppress these features will see them active after upgrade.
-
-> [!NOTE]
-> DIAL Core route config restructured: /v1/configuration-support/* moves from global routes to dial:applicationTypeRoutes — Operators must remove the quick_apps2-style global route and add dial:applicationTypeRoutes to the QuickApps applicationTypeSchemas entry. The dial:attachmentPaths field also enables DIAL Core ACL enforcement on prompt URLs in skills/validate requests.
-
-> [!NOTE]
-> New USE_SYSTEM_CA_CERTS option for TLS-intercepting proxy environments — When USE_SYSTEM_CA_CERTS=1, the container merges *.crt files mounted under /certificates/ with the Alpine system CA bundle at startup and sets SSL_CERT_FILE. Required for deployments behind corporate TLS-intercepting proxies.
-
-> [!NOTE]
-> DialDeploymentConfig.name and DialMCPToolSet.dial_id renamed to deployment_id; legacy keys deprecated — Existing manifests using name or dial_id continue to validate via validation_alias and the published JSON schema retains deprecated siblings under anyOf. Operators should migrate manifests to use deployment_id to avoid breakage when the legacy keys are removed in a future version.
+> Custom corporate root CAs can be trusted by mounting *.crt files under /certificates/ and setting USE_SYSTEM_CA_CERTS=1 — When USE_SYSTEM_CA_CERTS=1 is set, the container merges all *.crt files under /certificates/ with the Alpine system CA bundle at startup and exports SSL_CERT_FILE. Required for deployments behind TLS-intercepting proxies.
 
 ### ai-dial-adapter-vertexai
 
@@ -161,7 +138,7 @@ features.timestamp (Time Awareness) and the skills config field / DialPromptSkil
 
 **Veo: `pubsub_topic` field removed from config**
 
-The `pubsub_topic` field has been removed from the Veo model configuration. Any deployment config that includes this field must be updated to remove it.
+The `pubsub_topic` field has been removed from the Veo model configuration. Any deployment config referencing this field must be updated.
 
 | Previous configuration | Required action |
 |---|---|
@@ -171,9 +148,6 @@ The `pubsub_topic` field has been removed from the Veo model configuration. Any 
 
 - **Removed** `veo.pubsub_topic`: The `pubsub_topic` field has been removed from the Veo model configuration.
 
-> [!NOTE]
-> WIF support added for AWS container credential providers — Workload Identity Federation (WIF) support has been added for AWS container credential providers. Deployments that use AWS-based credentials with VertexAI may now leverage WIF-based authentication.
-
 ### ai-dial-adapter-openai
 
 #### Deprecated environment variables
@@ -182,9 +156,9 @@ The `pubsub_topic` field has been removed from the Veo model configuration. Any 
 |---|---|
 | `DIAL_USE_FILE_STORAGE` | DIAL_USE_FILE_STORAGE is deprecated. DIAL Storage is now enabled automatically when DIAL_URL is set. |
 
-**Migration:** _DIAL_USE_FILE_STORAGE explicitly set to enable storage_ → Remove DIAL_USE_FILE_STORAGE; ensure DIAL_URL is set if storage should remain enabled
+**Migration:** _DIAL_USE_FILE_STORAGE=True explicitly set_ → No immediate action required; variable is deprecated but still functional. Plan to remove it in a future upgrade.
 
-**Migration:** _DIAL_USE_FILE_STORAGE explicitly set to disable storage_ → Review new behavior — storage may now be auto-enabled when DIAL_URL is set; unset DIAL_URL or take other steps if storage must stay disabled
+**Migration:** _DIAL_USE_FILE_STORAGE=False or unset to disable storage_ → Verify new automatic enablement behavior does not unintentionally activate storage; remove DIAL_URL if storage should stay disabled.
 
 ### ai-dial-chat-themes
 
