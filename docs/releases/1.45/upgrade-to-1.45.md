@@ -46,38 +46,42 @@
 
 ##### Breaking changes
 
-**NODE_POOLS config replaced: label-key/capacity schema removed, now uses explicit Kubernetes scheduling primitives; new env vars NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL added**
+**NODE_POOLS config format changed from label-key/capacity to explicit Kubernetes scheduling primitives; new env vars NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL added**
 
-The NODE_POOLS configuration is now a YAML document using explicit 'nodeSelector', 'affinity', and 'tolerations' primitives per pool. The previous label-key/capacity config shape is no longer supported. Two new create-time default fields NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL are introduced.
+The NODE_POOLS environment variable is now a YAML document and must be restructured to use explicit 'nodeSelector', 'affinity', and 'tolerations' primitives per pool instead of the previous label-key/capacity config. Two new env vars, NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL, are introduced as create-time defaults.
 
 | Previous configuration | Required action |
 |---|---|
-| NODE_POOLS configured with label-key/capacity schema | Rewrite NODE_POOLS as a YAML document with explicit nodeSelector/affinity/tolerations per pool; set NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL as appropriate |
+| NODE_POOLS configured with label-key/capacity format | Rewrite NODE_POOLS as a YAML document using 'nodeSelector', 'affinity', and/or 'tolerations' primitives per pool. Review the full upgrade guide for schema details. |
+| NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL not set | Evaluate and configure NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL if create-time default pool stamping behavior is required. |
 
 **Removed deprecated config properties 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles'; must migrate to 'roles-mapping'**
 
-The previously deprecated config keys 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles' have been fully removed. Deployments still using these keys must migrate to the 'roles-mapping' configuration.
+The previously deprecated configuration properties 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles' have been removed entirely. Deployments still using these properties will break. Migration to the 'roles-mapping' configuration is required.
 
 | Previous configuration | Required action |
 |---|---|
-| 'config.rest.security.default.allowedRoles' set in config | Remove the property and configure equivalent access control via 'roles-mapping' |
-| 'providers.*.allowed-roles' set in config | Remove the property and configure equivalent access control via 'roles-mapping' |
+| 'config.rest.security.default.allowedRoles' present in config | Remove 'config.rest.security.default.allowedRoles' and configure equivalent access control via 'roles-mapping'. |
+| 'providers.*.allowed-roles' present in config | Remove all 'providers.*.allowed-roles' entries and configure equivalent access control via 'roles-mapping'. |
+
+##### Environment variables with changed defaults
+
+| Variable | Old default | New default | Description |
+|---|---|---|---|
+| `NODE_POOLS` | `label-key/capacity format` | `YAML document with explicit 'nodeSelector' / 'affinity' / 'tolerations' primitives per pool` | The NODE_POOLS variable now requires a YAML document format with explicit Kubernetes scheduling primitives instead of the previous label-key/capacity structure. |
 
 ##### New environment variables
 
 | Variable | Default | Required | Description |
 |---|---|---|---|
-| `NODE_POOL_DEFAULT` | — | No | Specifies the default node pool to stamp at create-time for deployments when no pool is explicitly selected. |
-| `NODE_POOL_DEFAULT_MODEL` | — | No | Specifies the default node pool to stamp at create-time for model deployments when no pool is explicitly selected. |
+| `NODE_POOL_DEFAULT` | — | No | Specifies the default node pool applied at resource create time as part of the new explicit Kubernetes scheduling primitives node pool configuration. |
+| `NODE_POOL_DEFAULT_MODEL` | — | No | Specifies the default model node pool applied at resource create time as part of the new explicit Kubernetes scheduling primitives node pool configuration. |
 
 ##### Config / Helm changes
 
-- **Removed** `config.rest.security.default.allowedRoles`: Previously deprecated property for allowed roles has been fully removed. Must migrate to 'roles-mapping'.
-- **Removed** `providers.*.allowed-roles`: Previously deprecated per-provider allowed-roles property has been fully removed. Must migrate to 'roles-mapping'.
-- **Added** `NODE_POOLS[*].nodeSelector`: Explicit Kubernetes nodeSelector primitive per node pool, replacing the previous label-key/capacity schema.
-- **Added** `NODE_POOLS[*].affinity`: Explicit Kubernetes affinity primitive per node pool, replacing the previous label-key/capacity schema.
-- **Added** `NODE_POOLS[*].tolerations`: Explicit Kubernetes tolerations primitive per node pool, replacing the previous label-key/capacity schema.
-- **Added** `roles-mapping`: Replacement for the removed 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles' config properties for access control.
+- **Removed** `config.rest.security.default.allowedRoles`: Previously deprecated property has been fully removed. Access control must now be configured via 'roles-mapping'.
+- **Removed** `providers.*.allowed-roles`: Previously deprecated property has been fully removed. Access control must now be configured via 'roles-mapping'.
+- **Added** `roles-mapping`: Replacement configuration for the removed 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles' properties. Required to maintain access control behavior after upgrade.
 
 ---
 
@@ -91,7 +95,7 @@ The `pubsub_topic` field has been removed from the Veo model configuration. Any 
 
 | Previous configuration | Required action |
 |---|---|
-| Veo config contains `pubsub_topic` field | Remove `pubsub_topic` from the Veo model config before upgrading |
+| Veo config includes `pubsub_topic` field | Remove the `pubsub_topic` field from the Veo model configuration |
 
 ##### Config / Helm changes
 
@@ -105,7 +109,7 @@ The `pubsub_topic` field has been removed from the Veo model configuration. Any 
 
 **CSV column group delimiter changed from `:` to `::`**
 
-The delimiter used to separate column groups in CSV files has changed from a single colon to a double colon. Any existing CSV datasets or integrations relying on the old delimiter format will be misparsed after upgrade.
+Any existing CSV datasets or integrations that used the single colon `:` as a column group delimiter must be updated to use `::` instead. Existing data may be parsed incorrectly if not migrated.
 
 | Previous configuration | Required action |
 |---|---|
@@ -119,10 +123,9 @@ The delimiter used to separate column groups in CSV files has changed from a sin
 
 | Variable | Description |
 |---|---|
-| `DIAL_USE_FILE_STORAGE` | DIAL_USE_FILE_STORAGE is deprecated. DIAL Storage is now enabled automatically when DIAL_URL is set. |
+| `DIAL_USE_FILE_STORAGE` | DIAL_USE_FILE_STORAGE is deprecated. Based on the deprecation pattern, DIAL Storage is likely now enabled automatically when DIAL_URL is set. |
 
-**Migration:** _DIAL_USE_FILE_STORAGE=True explicitly set_ → Remove DIAL_USE_FILE_STORAGE; storage will be enabled automatically when DIAL_URL is set
-**Migration:** _DIAL_USE_FILE_STORAGE unset or False_ → Verify DIAL_URL is not set if storage should remain disabled; otherwise remove the variable
+**Migration:** _DIAL_USE_FILE_STORAGE explicitly set_ → Plan to remove DIAL_USE_FILE_STORAGE; verify storage behavior with DIAL_URL alone
 
 ---
 
@@ -130,6 +133,6 @@ The delimiter used to separate column groups in CSV files has changed from a sin
 
 ##### Config / Helm changes
 
-- **Added** `config.json/bg-inverted`: New 'bg-inverted' property added to config.json for theme configuration.
+- **Added** `config.json / bg-inverted`: New 'bg-inverted' color property added to config.json theme configuration.
 
 ---
