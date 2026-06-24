@@ -27,6 +27,7 @@
    - ai-dial-admin-backend: `0.17.1`
    - ai-dial-admin-frontend: `0.17.1`
    - ai-dial-admin-deployment-manager-backend: `0.17.0`
+   - ai-dial-admin-evaluation-framework-backend: `-`
 
 ## Before upgrade
 
@@ -45,34 +46,34 @@
 
 ##### Breaking changes
 
-**NODE_POOLS config replaced: label-key/capacity format replaced with explicit Kubernetes scheduling primitives; format is now a YAML document**
+**NODE_POOLS config format replaced with explicit Kubernetes scheduling primitives; new env vars NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL added**
 
-The NODE_POOLS environment variable/config has been restructured from a label-key/capacity model to explicit Kubernetes scheduling primitives (nodeSelector, affinity, tolerations per pool). Two new create-time default fields NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL have been added.
-
-| Previous configuration | Required action |
-|---|---|
-| NODE_POOLS configured with label-key/capacity fields | Migrate NODE_POOLS to the new YAML document format using explicit nodeSelector/affinity/tolerations primitives per pool; set NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL as needed |
-
-**Removed deprecated config properties 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles'**
-
-The previously deprecated allowedRoles/allowed-roles config properties have been fully removed. Deployments still using these properties must migrate to the roles-mapping configuration.
+The previous node pool label-key/capacity configuration format has been replaced. NODE_POOLS is now a YAML document and must be reformatted to use explicit 'nodeSelector', 'affinity', and 'tolerations' primitives per pool. Two new create-time default env vars NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL are introduced.
 
 | Previous configuration | Required action |
 |---|---|
-| config.rest.security.default.allowedRoles set in configuration | Remove config.rest.security.default.allowedRoles and migrate authorization rules to roles-mapping |
-| providers.*.allowed-roles set in configuration | Remove providers.*.allowed-roles entries and migrate authorization rules to roles-mapping |
+| NODE_POOLS configured with label-key/capacity format | Rewrite NODE_POOLS as a YAML document using explicit nodeSelector/affinity/tolerations primitives per pool. Set NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL as needed for create-time defaults. |
+
+**Removed deprecated config properties 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles'; must migrate to 'roles-mapping'**
+
+The previously deprecated 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles' configuration properties have been removed entirely. Deployments using these properties must migrate to the 'roles-mapping' configuration.
+
+| Previous configuration | Required action |
+|---|---|
+| 'config.rest.security.default.allowedRoles' set in config | Remove this property and configure access control via 'roles-mapping' instead. |
+| 'providers.*.allowed-roles' set in config for one or more providers | Remove these properties and configure access control via 'roles-mapping' instead. |
 
 ##### New environment variables
 
 | Variable | Default | Required | Description |
 |---|---|---|---|
-| `NODE_POOL_DEFAULT` | — | No | Specifies the default node pool to stamp at create-time for deployments. Introduced as part of the Node Pool Configuration GA with explicit Kubernetes scheduling primitives. |
-| `NODE_POOL_DEFAULT_MODEL` | — | No | Specifies the default node pool for model deployments to stamp at create-time. Introduced as part of the Node Pool Configuration GA with explicit Kubernetes scheduling primitives. |
+| `NODE_POOL_DEFAULT` | — | No | Specifies the default node pool to stamp at create time when using the new YAML-document NODE_POOLS configuration. |
+| `NODE_POOL_DEFAULT_MODEL` | — | No | Specifies the default model node pool to stamp at create time when using the new YAML-document NODE_POOLS configuration. |
 
 ##### Config / Helm changes
 
-- **Removed** `config.rest.security.default.allowedRoles`: Previously deprecated property fully removed. Must migrate to roles-mapping.
-- **Removed** `providers.*.allowed-roles`: Previously deprecated property fully removed. Must migrate to roles-mapping.
+- **Removed** `config.rest.security.default.allowedRoles`: Previously deprecated property fully removed. Must migrate to 'roles-mapping'.
+- **Removed** `providers.*.allowed-roles`: Previously deprecated property fully removed from all provider configs. Must migrate to 'roles-mapping'.
 
 ---
 
@@ -80,17 +81,17 @@ The previously deprecated allowedRoles/allowed-roles config properties have been
 
 ##### Breaking changes
 
-**Veo: `pubsub_topic` field removed from config**
+**Veo: pubsub_topic field removed from config**
 
-The `pubsub_topic` field has been removed from the Veo model configuration. Any deployment config that includes this field must be updated to remove it before or during upgrade.
+The pubsub_topic field has been removed from the Veo configuration. Any deployment configs referencing this field will need to be updated.
 
 | Previous configuration | Required action |
 |---|---|
-| Veo config contains `pubsub_topic` field | Remove `pubsub_topic` from the Veo model configuration |
+| Veo config contains pubsub_topic field | Remove pubsub_topic from Veo config; the field is no longer recognized |
 
 ##### Config / Helm changes
 
-- **Removed** `veo.pubsub_topic`: The `pubsub_topic` field has been removed from the Veo model configuration.
+- **Removed** `veo.pubsub_topic`: The pubsub_topic field has been removed from the Veo model configuration.
 
 ---
 
@@ -100,10 +101,9 @@ The `pubsub_topic` field has been removed from the Veo model configuration. Any 
 
 | Variable | Description |
 |---|---|
-| `DIAL_USE_FILE_STORAGE` | DIAL_USE_FILE_STORAGE is deprecated. DIAL Storage is now enabled automatically when DIAL_URL is set. |
+| `DIAL_USE_FILE_STORAGE` | DIAL_USE_FILE_STORAGE is deprecated. No replacement is explicitly mentioned in the release notes. |
 
-**Migration:** _DIAL_USE_FILE_STORAGE explicitly set to True_ → No action required; behavior is unchanged as storage is now auto-enabled when DIAL_URL is set
-**Migration:** _DIAL_USE_FILE_STORAGE explicitly set to False or unset with DIAL_URL present_ → Remove DIAL_URL if storage should remain disabled, as storage may now be auto-enabled
+**Migration:** _DIAL_USE_FILE_STORAGE is set_ → Plan to remove this env var; check release notes or README for updated file storage configuration guidance
 
 ---
 
@@ -111,6 +111,6 @@ The `pubsub_topic` field has been removed from the Veo model configuration. Any 
 
 ##### Config / Helm changes
 
-- **Added** `config.json / bg-inverted`: New 'bg-inverted' color property added to config.json theme configuration.
+- **Added** `config.json / bg-inverted`: New 'bg-inverted' property added to config.json for theming.
 
 ---
