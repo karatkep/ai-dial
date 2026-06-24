@@ -46,34 +46,38 @@
 
 ##### Breaking changes
 
-**NODE_POOLS config format changed from label-key/capacity style to explicit Kubernetes scheduling primitives (YAML document); new NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL create-time defaults added**
+**NODE_POOLS config replaced: label-key/capacity schema removed, now uses explicit Kubernetes scheduling primitives; new env vars NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL added**
 
-The NODE_POOLS environment variable/config is now a YAML document and must be restructured to use explicit 'nodeSelector', 'affinity', and 'tolerations' primitives per pool. Additionally, NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL are new create-time default settings that must be reviewed and set appropriately.
+The NODE_POOLS configuration is now a YAML document using explicit 'nodeSelector', 'affinity', and 'tolerations' primitives per pool. The previous label-key/capacity config shape is no longer supported. Two new create-time default fields NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL are introduced.
 
 | Previous configuration | Required action |
 |---|---|
-| NODE_POOLS configured with label-key/capacity format | Rewrite NODE_POOLS as a YAML document using explicit 'nodeSelector', 'affinity', and 'tolerations' primitives per pool. Set NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL as needed. |
+| NODE_POOLS configured with label-key/capacity schema | Rewrite NODE_POOLS as a YAML document with explicit nodeSelector/affinity/tolerations per pool; set NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL as appropriate |
 
 **Removed deprecated config properties 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles'; must migrate to 'roles-mapping'**
 
-The previously deprecated 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles' configuration properties have been removed entirely. Deployments still using these properties must migrate to the 'roles-mapping' configuration.
+The previously deprecated config keys 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles' have been fully removed. Deployments still using these keys must migrate to the 'roles-mapping' configuration.
 
 | Previous configuration | Required action |
 |---|---|
-| 'config.rest.security.default.allowedRoles' set in config | Remove 'config.rest.security.default.allowedRoles' and configure equivalent access control via 'roles-mapping'. |
-| 'providers.*.allowed-roles' set in config for one or more providers | Remove 'providers.*.allowed-roles' entries and configure equivalent access control via 'roles-mapping'. |
+| 'config.rest.security.default.allowedRoles' set in config | Remove the property and configure equivalent access control via 'roles-mapping' |
+| 'providers.*.allowed-roles' set in config | Remove the property and configure equivalent access control via 'roles-mapping' |
 
 ##### New environment variables
 
 | Variable | Default | Required | Description |
 |---|---|---|---|
-| `NODE_POOL_DEFAULT` | — | No | Specifies the default node pool to use at deployment create-time. Introduced as part of the Node Pool Configuration GA release. |
-| `NODE_POOL_DEFAULT_MODEL` | — | No | Specifies the default node pool for model deployments at create-time. Introduced as part of the Node Pool Configuration GA release. |
+| `NODE_POOL_DEFAULT` | — | No | Specifies the default node pool to stamp at create-time for deployments when no pool is explicitly selected. |
+| `NODE_POOL_DEFAULT_MODEL` | — | No | Specifies the default node pool to stamp at create-time for model deployments when no pool is explicitly selected. |
 
 ##### Config / Helm changes
 
-- **Removed** `config.rest.security.default.allowedRoles`: Previously deprecated property has been fully removed. Migrate to 'roles-mapping'.
-- **Removed** `providers.*.allowed-roles`: Previously deprecated per-provider property has been fully removed. Migrate to 'roles-mapping'.
+- **Removed** `config.rest.security.default.allowedRoles`: Previously deprecated property for allowed roles has been fully removed. Must migrate to 'roles-mapping'.
+- **Removed** `providers.*.allowed-roles`: Previously deprecated per-provider allowed-roles property has been fully removed. Must migrate to 'roles-mapping'.
+- **Added** `NODE_POOLS[*].nodeSelector`: Explicit Kubernetes nodeSelector primitive per node pool, replacing the previous label-key/capacity schema.
+- **Added** `NODE_POOLS[*].affinity`: Explicit Kubernetes affinity primitive per node pool, replacing the previous label-key/capacity schema.
+- **Added** `NODE_POOLS[*].tolerations`: Explicit Kubernetes tolerations primitive per node pool, replacing the previous label-key/capacity schema.
+- **Added** `roles-mapping`: Replacement for the removed 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles' config properties for access control.
 
 ---
 
@@ -83,7 +87,7 @@ The previously deprecated 'config.rest.security.default.allowedRoles' and 'provi
 
 **Veo: `pubsub_topic` field removed from config**
 
-The `pubsub_topic` field has been removed from the Veo model configuration. Any deployment config referencing this field must be updated to remove it.
+The `pubsub_topic` field has been removed from the Veo model configuration. Any deployment config that includes this field must be updated to remove it.
 
 | Previous configuration | Required action |
 |---|---|
@@ -101,11 +105,11 @@ The `pubsub_topic` field has been removed from the Veo model configuration. Any 
 
 **CSV column group delimiter changed from `:` to `::`**
 
-The delimiter used for column groups in CSV files has changed from a single colon to a double colon. Any existing CSV data or tooling that uses the old delimiter will need to be updated.
+The delimiter used to separate column groups in CSV files has changed from a single colon to a double colon. Any existing CSV datasets or integrations relying on the old delimiter format will be misparsed after upgrade.
 
 | Previous configuration | Required action |
 |---|---|
-| CSV column group delimiter is `:` (single colon) | Update all CSV files and any tooling/integrations that produce or consume CSV column groups to use `::` (double colon) as the delimiter |
+| CSV files using `:` as column group delimiter | Update all CSV dataset files to use `::` as the column group delimiter before or after upgrading |
 
 ---
 
@@ -115,9 +119,10 @@ The delimiter used for column groups in CSV files has changed from a single colo
 
 | Variable | Description |
 |---|---|
-| `DIAL_USE_FILE_STORAGE` | DIAL_USE_FILE_STORAGE is deprecated. No replacement explicitly mentioned in release notes. |
+| `DIAL_USE_FILE_STORAGE` | DIAL_USE_FILE_STORAGE is deprecated. DIAL Storage is now enabled automatically when DIAL_URL is set. |
 
-**Migration:** _DIAL_USE_FILE_STORAGE is set_ → Plan to remove this env var; monitor for future release notes indicating when it will be fully removed
+**Migration:** _DIAL_USE_FILE_STORAGE=True explicitly set_ → Remove DIAL_USE_FILE_STORAGE; storage will be enabled automatically when DIAL_URL is set
+**Migration:** _DIAL_USE_FILE_STORAGE unset or False_ → Verify DIAL_URL is not set if storage should remain disabled; otherwise remove the variable
 
 ---
 
@@ -125,6 +130,6 @@ The delimiter used for column groups in CSV files has changed from a single colo
 
 ##### Config / Helm changes
 
-- **Added** `config.json / bg-inverted`: New 'bg-inverted' color property added to the theme config.json.
+- **Added** `config.json/bg-inverted`: New 'bg-inverted' property added to config.json for theme configuration.
 
 ---
