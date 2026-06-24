@@ -21,7 +21,7 @@
    - ai-dial-code-interpreter: `0.2.0`
    - ai-dial-app-controller: `0.4.0`
    - ai-dial-app-builder-python: `0.1.0`
-   - ai-dial-quickapps-backend: `0.8.0`
+   - ai-dial-quickapps-backend: `0.8.1`
    - ai-dial-mind-map-backend: `0.14.1`
    - ai-dial-mind-map-frontend: `0.13.0`
    - ai-dial-admin-backend: `0.17.1`
@@ -38,46 +38,80 @@
 
 ### Release-specific notes
 
-#### ai-dial-quickapps-backend `0.8.0`
-
-### New environment variables
-
-| Variable                             | Default    | Description                                                                                                                                                                                                                                     |
-|--------------------------------------|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `DEFAULT_ORCHESTRATOR_DEPLOYMENT_ID` | —          | Default DIAL deployment id used as the orchestrator model when a QuickApp manifest omits `orchestrator.deployment`. Also surfaces as the JSON-schema `default` for that field so DIAL Core can pre-fill new manifests. Apps can override per-app. |
-| `DEFAULT_FILE_LOADING_SIZE_LIMIT`    | `10485760` | Deployment-wide cap (bytes, `> 0`; default 10 MiB) on files the agent downloads. Overridden per-app by `features.file_loading.size_limit` in the manifest.                                                                                       |
-| `USE_SYSTEM_CA_CERTS`                | unset      | When set to `1`, merges every `*.crt` file under `/certificates/` with the Alpine system CA bundle at container startup and exports `SSL_CERT_FILE` to the merged path so outbound HTTP calls trust private/corporate root CAs. Opt-in; unset keeps existing behaviour. |
-
-### Behavioral changes
-
-> [!NOTE]
-> Two preview-gated features have graduated to GA and are now active regardless of `ENABLE_PREVIEW_FEATURES`:
->
-> - **Time Awareness** — `features.timestamp` (#290)
-> - **DIAL Prompt Skills** — the `skills` config field and `DialPromptSkillsModule` (#291)
-
-### DIAL Configuration changes
-
-> [!IMPORTANT]
-> Operators must update DIAL Core's configuration when upgrading to this release. The `/v1/configuration-support/*` endpoints are no longer served via a global DIAL Core `routes` entry — they are declared on the QuickApps application type itself.
->
-> **Required migration** (#319):
->
-> 1. **Remove** any `quick_apps2`-style entry from DIAL Core's global `routes` block (it will be ignored from now on).
-> 2. **Add** the new `dial:applicationTypeRoutes` block to the QuickApps entry under `applicationTypeSchemas` — apply the schema snippet from [PR #319](https://github.com/epam/ai-dial-quickapps-backend/pull/319) verbatim.
-
-### Schema deprecations
+#### ai-dial-admin-deployment-manager-backend `0.17.0`
 
 > [!CAUTION]
-> Still accepted in app manifests, but will be removed in future versions (#287).
+> This release includes high-priority changes. Please review the [full upgrade guide](https://github.com/epam/ai-dial-admin-deployment-manager-backend/blob/0.17.0/docs/upgrade-plans/0.17.0.md) before proceeding.
 
-| Legacy key                | Replacement     | Affected config model    |
-|---------------------------|-----------------|--------------------------|
-| `name` (deployment field) | `deployment_id` | `DialDeploymentConfig`   |
-| `dial_id`                 | `deployment_id` | `DialMCPToolSet`         |
+##### Breaking changes
+
+**NODE_POOLS config format changed from label-key/capacity to explicit Kubernetes scheduling primitives (YAML document); new NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL create-time defaults added**
+
+The NODE_POOLS environment variable/config is now a YAML document and must be reformatted to use explicit 'nodeSelector', 'affinity', and 'tolerations' primitives per pool. Two new create-time default fields NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL are introduced.
+
+| Previous configuration | Required action |
+|---|---|
+| NODE_POOLS configured with label-key/capacity format | Rewrite NODE_POOLS as a YAML document using explicit 'nodeSelector', 'affinity', and 'tolerations' per pool; set NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL as needed |
+
+**Removed deprecated config properties 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles'; must migrate to 'roles-mapping'**
+
+The previously deprecated 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles' config keys have been removed. Deployments still using these keys must migrate to the 'roles-mapping' configuration.
+
+| Previous configuration | Required action |
+|---|---|
+| 'config.rest.security.default.allowedRoles' or 'providers.*.allowed-roles' present in configuration | Remove these keys and configure access control using 'roles-mapping' instead |
+
+##### New environment variables
+
+| Variable | Default | Required | Description |
+|---|---|---|---|
+| `NODE_POOL_DEFAULT` | — | No | Create-time default node pool to stamp onto new deployments when no pool is explicitly specified. |
+| `NODE_POOL_DEFAULT_MODEL` | — | No | Create-time default node pool for model deployments when no pool is explicitly specified. |
+
+##### Config / Helm changes
+
+- **Removed** `config.rest.security.default.allowedRoles`: Previously deprecated property for allowed roles has been removed. Use 'roles-mapping' instead.
+- **Removed** `providers.*.allowed-roles`: Previously deprecated per-provider allowed-roles property has been removed. Use 'roles-mapping' instead.
+- **Added** `node_pools[*].nodeSelector`: Explicit Kubernetes nodeSelector primitive per node pool, replacing the previous label-key/capacity format.
+- **Added** `node_pools[*].affinity`: Explicit Kubernetes affinity primitive per node pool, replacing the previous label-key/capacity format.
+- **Added** `node_pools[*].tolerations`: Explicit Kubernetes tolerations primitive per node pool, replacing the previous label-key/capacity format.
 
 ---
 
-#### ai-dial-admin-deployment-manager-backend `0.17.0`
+#### ai-dial-adapter-vertexai `0.36.0`
 
-This release includes **many critical and high-priority changes**. Please review the [full upgrade guide](https://github.com/epam/ai-dial-admin-deployment-manager-backend/blob/0.17.0/docs/upgrade-plans/0.17.0.md) before proceeding.
+##### Breaking changes
+
+**Veo: `pubsub_topic` field removed from config**
+
+The `pubsub_topic` field has been removed from the Veo model configuration. Any deployment config that includes this field must be updated to remove it before or during upgrade.
+
+| Previous configuration | Required action |
+|---|---|
+| Veo model config contains `pubsub_topic` field | Remove the `pubsub_topic` field from the Veo model configuration |
+
+##### Config / Helm changes
+
+- **Removed** `veo.pubsub_topic`: The `pubsub_topic` field has been removed from the Veo model configuration.
+
+---
+
+#### ai-dial-adapter-openai `0.40.0`
+
+##### Deprecated environment variables
+
+| Variable | Description |
+|---|---|
+| `DIAL_USE_FILE_STORAGE` | DIAL_USE_FILE_STORAGE is deprecated. No replacement explicitly mentioned in release notes. |
+
+**Migration:** _DIAL_USE_FILE_STORAGE is set_ → Plan to remove this env var; check release notes or README for updated file storage configuration guidance
+
+---
+
+#### ai-dial-chat-themes `0.16.0`
+
+##### Config / Helm changes
+
+- **Added** `config.json / bg-inverted`: New 'bg-inverted' property added to config.json theme configuration.
+
+---
