@@ -14,19 +14,19 @@
    - ai-dial-adapter-dial: `0.15.0`
    - ai-dial-chat-themes: `0.16.0`
    - ai-dial-chat: `0.46.3`
-   - ai-dial-core: `0.44.5`
+   - ai-dial-core: `0.45.0-rc.0`
    - ai-dial-analytics-realtime: `0.24.2`
    - ai-dial-rag: `0.42.0`
    - ai-dial-log-parser: `0.3.0`
    - ai-dial-code-interpreter: `0.2.0`
    - ai-dial-app-controller: `0.4.0`
    - ai-dial-app-builder-python: `0.1.0`
-   - ai-dial-quickapps-backend: `0.8.1`
+   - ai-dial-quickapps-backend: `0.9.0-rc.1`
    - ai-dial-mind-map-backend: `0.14.1`
    - ai-dial-mind-map-frontend: `0.13.0`
-   - ai-dial-admin-backend: `0.17.1`
-   - ai-dial-admin-frontend: `0.17.1`
-   - ai-dial-admin-deployment-manager-backend: `0.17.0`
+   - ai-dial-admin-backend: `0.18.0-rc.0`
+   - ai-dial-admin-frontend: `0.18.0-rc.0`
+   - ai-dial-admin-deployment-manager-backend: `0.18.0-rc.0`
    - ai-dial-admin-evaluation-framework-backend: `0.1.0-rc.0`
 
 ## Before upgrade
@@ -39,60 +39,17 @@
 
 ### Release-specific notes
 
-#### ai-dial-admin-deployment-manager-backend `0.17.0`
-
-> [!CAUTION]
-> This release includes high-priority changes. Please review the [full upgrade guide](https://github.com/epam/ai-dial-admin-deployment-manager-backend/blob/0.17.0/docs/upgrade-plans/0.17.0.md) before proceeding.
-
-##### Breaking changes
-
-**NODE_POOLS config replaced: label-key/capacity schema replaced with explicit Kubernetes scheduling primitives; format changed to YAML document**
-
-The NODE_POOLS environment variable is now a YAML document. The previous label-key/capacity config structure is no longer valid. Two new create-time defaults are introduced: NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL. Pools now use explicit nodeSelector, affinity, and tolerations fields per pool.
-
-| Previous configuration | Required action |
-|---|---|
-| NODE_POOLS configured with label-key/capacity schema | Rewrite NODE_POOLS as a YAML document using nodeSelector/affinity/tolerations primitives per pool. Set NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL as appropriate. |
-
-**Removed deprecated config properties 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles'; migrate to 'roles-mapping'**
-
-The previously deprecated config keys 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles' have been removed entirely. Deployments still using these keys must migrate to 'roles-mapping' before upgrading.
-
-| Previous configuration | Required action |
-|---|---|
-| 'config.rest.security.default.allowedRoles' set in configuration | Remove 'config.rest.security.default.allowedRoles' and configure equivalent access control via 'roles-mapping'. |
-| 'providers.*.allowed-roles' set in provider configuration | Remove 'providers.*.allowed-roles' and configure equivalent access control via 'roles-mapping'. |
-
-##### New environment variables
-
-| Variable | Default | Required | Description |
-|---|---|---|---|
-| `NODE_POOL_DEFAULT` | — | No | Specifies the default node pool to use at create-time for deployments. Introduced as part of the NODE_POOLS YAML document restructuring. |
-| `NODE_POOL_DEFAULT_MODEL` | — | No | Specifies the default node pool to use at create-time for model deployments. Introduced as part of the NODE_POOLS YAML document restructuring. |
-
-##### Config / Helm changes
-
-- **Removed** `config.rest.security.default.allowedRoles`: Previously deprecated config key for role-based access control. Now fully removed; must migrate to 'roles-mapping'.
-- **Removed** `providers.*.allowed-roles`: Previously deprecated per-provider role config key. Now fully removed; must migrate to 'roles-mapping'.
-- **Removed** `node_pools[*].label-key`: Old node pool label-key field removed as part of restructuring NODE_POOLS to use explicit Kubernetes scheduling primitives.
-- **Removed** `node_pools[*].capacity`: Old node pool capacity field removed as part of restructuring NODE_POOLS to use explicit Kubernetes scheduling primitives.
-- **Added** `node_pools[*].nodeSelector`: Explicit Kubernetes nodeSelector field per node pool entry in the NODE_POOLS YAML document.
-- **Added** `node_pools[*].affinity`: Explicit Kubernetes affinity field per node pool entry in the NODE_POOLS YAML document.
-- **Added** `node_pools[*].tolerations`: Explicit Kubernetes tolerations field per node pool entry in the NODE_POOLS YAML document.
-
----
-
 #### ai-dial-admin-evaluation-framework-backend `0.1.0-rc.0`
 
 ##### Breaking changes
 
-**EvalSummary CSV export column-group separator changed from `:` to `::`**
+**EvalSummary CSV column-group separator changed from `:` to `::`**
 
-Any downstream consumer that parses exported CSV headers by splitting on `:` must update to split on `::`. Example: `data:prompt` → `data::prompt`, `metric:Accuracy:score` → `metric::Accuracy::score`.
+Any downstream consumer that parses exported CSV headers by splitting on `:` will break. Column names like `data:prompt` are now `data::prompt`; `metric:Accuracy:score` is now `metric::Accuracy::score`.
 
 | Previous configuration | Required action |
 |---|---|
-| CSV header parser splits on single `:` (e.g. `data:prompt`, `metric:Accuracy:score`) | Update parser to split on `::` instead of `:` |
+| CSV header parser splits on single `:` (e.g. `data:prompt`, `metric:Accuracy:score`) | Update parser to split on `::` instead of `:` to match new separator (e.g. `data::prompt`, `metric::Accuracy::score`) |
 
 ##### New environment variables
 
@@ -108,15 +65,72 @@ Any downstream consumer that parses exported CSV headers by splitting on `:` mus
 
 **Veo: `pubsub_topic` field removed from config**
 
-The `pubsub_topic` field has been removed from the Veo model configuration. Any deployment config referencing this field must be updated.
+The `pubsub_topic` field has been removed from the Veo model configuration. Any existing config that includes this field must be updated to remove it.
 
 | Previous configuration | Required action |
 |---|---|
-| Veo config contains `pubsub_topic` field | Remove `pubsub_topic` from Veo model configuration |
+| Veo config contains `pubsub_topic` field | Remove the `pubsub_topic` field from the Veo model configuration before upgrading |
 
 ##### Config / Helm changes
 
-- **Removed** `veo.pubsub_topic`: The `pubsub_topic` field has been removed from Veo model configuration.
+- **Removed** `veo.pubsub_topic`: The `pubsub_topic` field has been removed from the Veo model configuration.
+
+---
+
+#### ai-dial-admin-backend `0.18.0-rc.0`
+
+##### Breaking changes
+
+**Flat `applicationTypeSchemaId` field replaced by polymorphic `source` field on ApplicationResourceDto and CreateApplicationResourceDto**
+
+The `applicationTypeSchemaId` field has been removed from `ApplicationResourceDto` and `CreateApplicationResourceDto`. It is replaced by a `source` field that is a `$type`-discriminated polymorphic object supporting `schema` and `endpoints` variants. Any API clients, automation, or config payloads that set or read `applicationTypeSchemaId` must be updated to use the new `source` structure.
+
+| Previous configuration | Required action |
+|---|---|
+| API payloads use flat `applicationTypeSchemaId` field on ApplicationResourceDto / CreateApplicationResourceDto | Replace `applicationTypeSchemaId` with the polymorphic `source` object (discriminated by `$type`, variants: `schema` and `endpoints`) in all API calls, integrations, and stored payloads |
+
+##### Config / Helm changes
+
+- **Default changed** `applicationProperties`: `unset / null` → `empty map `{}`` — The `applicationProperties` field for application assets now defaults to an empty map instead of being absent/null.
+- **Added** `features.maxTokensSupported`: New configuration property introduced in DIAL Core v0.45.0. Defaults to `true`.
+- **Added** `features.maxCompletionTokensSupported`: New configuration property introduced in DIAL Core v0.45.0.
+- **Added** `features.customTemperatureSupported`: New configuration property introduced in DIAL Core v0.45.0. Defaults to `true`.
+- **Added** `features.reasoningEfforts`: New configuration property introduced in DIAL Core v0.45.0.
+- **Added** `upstreams.secretExtraData`: New configuration property for upstreams introduced in DIAL Core v0.45.0.
+- **Added** `models.embeddingDimensions`: New configuration property for models introduced in DIAL Core v0.45.0.
+
+---
+
+#### ai-dial-admin-deployment-manager-backend `0.18.0-rc.0`
+
+##### Breaking changes
+
+**Spring Boot upgraded to 4.x**
+
+The application framework has been upgraded to Spring Boot 4.x. This is a major version bump that may affect configuration property names, actuator endpoints, security defaults, and other Spring Boot-managed behaviors. Review Spring Boot 4.x migration guide for any incompatible configuration or property changes.
+
+| Previous configuration | Required action |
+|---|---|
+| Running with Spring Boot 3.x defaults and configuration | Review Spring Boot 4.x migration guide; audit application.properties/application.yaml and any Spring Boot-related env vars for renamed or removed properties before upgrading |
+
+---
+
+#### ai-dial-quickapps-backend `0.9.0-rc.1`
+
+##### Breaking changes
+
+**DIAL files tools graduated to GA — now active regardless of ENABLE_PREVIEW_FEATURES**
+
+The tools list/read_lines/search/find/write/edit/delete/copy/move and the features.dial_files config field are no longer gated by ENABLE_PREVIEW_FEATURES. Any deployment that previously relied on ENABLE_PREVIEW_FEATURES=false to suppress these tools will find them active after upgrade. Only tool_call_result_offload (features.dial_files.tool_call_result_offload and its TOOL_CALL_RESULT_OFFLOAD__* env defaults) remains behind the preview flag.
+
+| Previous configuration | Required action |
+|---|---|
+| ENABLE_PREVIEW_FEATURES=false; DIAL files tools were inactive | After upgrade, DIAL files tools will be active. If you need to suppress them, disable via features.dial_files config rather than relying on the preview flag. |
+| ENABLE_PREVIEW_FEATURES=true; DIAL files tools were active | No action required; behavior unchanged. |
+
+##### Config / Helm changes
+
+- **Added** `features.dial_files`: Config field for DIAL files tools is now GA and active regardless of ENABLE_PREVIEW_FEATURES. Previously only effective when ENABLE_PREVIEW_FEATURES was enabled.
 
 ---
 
@@ -126,10 +140,9 @@ The `pubsub_topic` field has been removed from the Veo model configuration. Any 
 
 | Variable | Description |
 |---|---|
-| `DIAL_USE_FILE_STORAGE` | DIAL_USE_FILE_STORAGE is deprecated. DIAL Storage is now enabled automatically when DIAL_URL is set. |
+| `DIAL_USE_FILE_STORAGE` | DIAL_USE_FILE_STORAGE is deprecated. No replacement explicitly mentioned in release notes. |
 
-**Migration:** _DIAL_USE_FILE_STORAGE=True explicitly set_ → No action required; storage behavior is now automatic when DIAL_URL is set
-**Migration:** _DIAL_USE_FILE_STORAGE=False or unset to disable storage_ → Verify new automatic behavior does not enable storage unexpectedly; remove DIAL_URL if storage should remain disabled
+**Migration:** _DIAL_USE_FILE_STORAGE is set in deployment_ → Plan to remove DIAL_USE_FILE_STORAGE; review updated README/documentation for new file storage configuration behavior
 
 ---
 
@@ -138,5 +151,17 @@ The `pubsub_topic` field has been removed from the Veo model configuration. Any 
 ##### Config / Helm changes
 
 - **Added** `config.json / bg-inverted`: New 'bg-inverted' color property added to config.json theme configuration.
+
+---
+
+#### ai-dial-core `0.45.0-rc.0`
+
+##### Config / Helm changes
+
+- **Added** `features.reasoningEffortsSupported`: New feature flag to indicate whether reasoning efforts are supported by a model/deployment.
+- **Added** `features.max_tokens / features.max_completion_tokens / features.temperature`: New feature flags to expose max_tokens, max_completion_tokens, and temperature capabilities in model listings.
+- **Added** `features (available endpoints flags)`: New flags added to expose available endpoints in feature listings.
+- **Added** `dial-unified-config (Configuration API / MergedConfigStore / secret encryption)`: New server-side unified configuration API introduced, including a MergedConfigStore and secret encryption support.
+- **Added** `roles.readonly-admin`: New readonly-admin role introduced to allow reading user data without write access.
 
 ---
