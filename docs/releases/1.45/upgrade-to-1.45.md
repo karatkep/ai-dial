@@ -38,91 +38,79 @@
 
 ### Release-specific notes
 
-<!-- 🤖 AI-generated draft for DIAL 1.45 — review before merging -->
-
-#### Cross-component notes
-
-- ai-dial-admin-deployment-manager-backend 0.17.0 introduces API-key authentication by validating the 'Api-Key' header against ai-dial-core's '/v1/user/info' endpoint; ensure ai-dial-core is reachable from the deployment manager and that DIAL Core connectivity/config (e.g., Core URL) is configured before upgrading the deployment manager.
-- ai-dial-chat-themes 0.16.0 adds default logos and favicons for both ai-dial-chat and ai-dial-admin-frontend; if either component uses customized theme overrides, verify those overrides are not silently replaced or broken after upgrading ai-dial-chat-themes.
-- ai-dial-adapter-openai 0.40.0 deprecates DIAL_USE_FILE_STORAGE with no stated replacement; if this env var is used in your deployment, audit whether file storage behavior changes affect ai-dial-core or any adapter that depends on file routing through the OpenAI adapter, and plan removal before a future release drops it entirely.
-- ai-dial-admin-deployment-manager-backend 0.17.0 has a published external upgrade guide (https://github.com/epam/ai-dial-admin-deployment-manager-backend/blob/0.17.0/docs/upgrade-plans/0.17.0.md) rated critical; review and execute it before upgrading any dependent admin components (ai-dial-admin-frontend 0.17.1, ai-dial-admin-backend 0.17.1).
-
-### ai-dial-admin-deployment-manager-backend
+#### ai-dial-admin-deployment-manager-backend `0.17.0`
 
 > [!CAUTION]
 > This release includes high-priority changes. Please review the [full upgrade guide](https://github.com/epam/ai-dial-admin-deployment-manager-backend/blob/0.17.0/docs/upgrade-plans/0.17.0.md) before proceeding.
 
-#### Breaking changes
+##### Breaking changes
 
-**NODE_POOLS config format changed from label-key/capacity to YAML document with explicit Kubernetes scheduling primitives; new NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL create-time defaults added**
+**NODE_POOLS config format changed to YAML document; new NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL env vars added for create-time defaults**
 
-The NODE_POOLS configuration is now a YAML document. The previous label-key/capacity config format is replaced with explicit 'nodeSelector', 'affinity', and 'tolerations' primitives per pool. Two new default-stamping env vars (NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL) are introduced for create-time defaults.
+The node pool configuration no longer uses label-key/capacity fields. It is now expressed as a YAML document with explicit Kubernetes scheduling primitives (nodeSelector, affinity, tolerations) per pool. Two new create-time default config items (NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL) are introduced.
 
 | Previous configuration | Required action |
 |---|---|
-| NODE_POOLS configured with label-key/capacity format | Migrate NODE_POOLS to YAML document format using explicit nodeSelector/affinity/tolerations primitives per pool. Review full upgrade guide for schema details. |
-| No NODE_POOL_DEFAULT or NODE_POOL_DEFAULT_MODEL set | Optionally set NODE_POOL_DEFAULT and/or NODE_POOL_DEFAULT_MODEL env vars to define create-time default pool assignments. |
+| NODE_POOLS configured with label-key/capacity fields | Rewrite NODE_POOLS as a YAML document using explicit nodeSelector/affinity/tolerations primitives per pool. Set NODE_POOL_DEFAULT and NODE_POOL_DEFAULT_MODEL as needed for create-time defaults. |
 
 **Removed deprecated config properties 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles'; must migrate to 'roles-mapping'**
 
-The previously deprecated 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles' config properties have been removed entirely. Deployments still using these properties must migrate to the 'roles-mapping' configuration.
+The previously deprecated config keys 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles' have been fully removed. Deployments still using these keys will break. Migration to 'roles-mapping' is required.
 
 | Previous configuration | Required action |
 |---|---|
-| 'config.rest.security.default.allowedRoles' set in config | Remove 'config.rest.security.default.allowedRoles' and replace with equivalent 'roles-mapping' configuration. |
-| 'providers.*.allowed-roles' set in config | Remove 'providers.*.allowed-roles' entries and replace with equivalent 'roles-mapping' configuration. |
+| config.rest.security.default.allowedRoles and/or providers.*.allowed-roles set in configuration | Remove these keys and migrate role definitions to the 'roles-mapping' configuration structure before upgrading. |
 
-#### New environment variables
+##### New environment variables
 
 | Variable | Default | Required | Description |
 |---|---|---|---|
-| `NODE_POOL_DEFAULT` | — | No | Specifies the default node pool to stamp at resource create-time when no explicit pool is provided. |
-| `NODE_POOL_DEFAULT_MODEL` | — | No | Specifies the default node pool for model resources at create-time. |
+| `NODE_POOL_DEFAULT` | — | No | Specifies the default node pool to stamp at create-time for general deployments, as part of the new YAML-document NODE_POOLS configuration. |
+| `NODE_POOL_DEFAULT_MODEL` | — | No | Specifies the default node pool to stamp at create-time for model deployments, as part of the new YAML-document NODE_POOLS configuration. |
 
-#### Config / Helm changes
+##### Config / Helm changes
 
-- **Removed** `config.rest.security.default.allowedRoles`: Previously deprecated config property for allowed roles; now fully removed. Migrate to 'roles-mapping'.
-- **Removed** `providers.*.allowed-roles`: Previously deprecated per-provider allowed-roles config; now fully removed. Migrate to 'roles-mapping'.
-- **Added** `roles-mapping`: Replacement configuration for the removed 'config.rest.security.default.allowedRoles' and 'providers.*.allowed-roles' properties.
+- **Removed** `config.rest.security.default.allowedRoles`: Previously deprecated config property fully removed. Migrate to roles-mapping.
+- **Removed** `providers.*.allowed-roles`: Previously deprecated config property fully removed. Migrate to roles-mapping.
+- **Added** `NODE_POOLS (YAML document format) — nodeSelector/affinity/tolerations per pool`: NODE_POOLS is now a YAML document. Each pool entry must use explicit Kubernetes scheduling primitives: nodeSelector, affinity, and tolerations.
 
-> [!NOTE]
-> NODE_POOLS now uses explicit Kubernetes scheduling primitives (nodeSelector, affinity, tolerations) — Node Pool Configuration is generally available. Each pool in the YAML document supports 'nodeSelector', 'affinity', and 'tolerations' fields directly. The previous label-key/capacity abstraction is gone.
+---
 
-> [!NOTE]
-> New API-key authentication via DIAL Core added alongside existing JWT/OIDC flow — The 'Api-Key' header is now validated against DIAL Core's '/v1/user/info' endpoint. This is an additive change but may require DIAL Core connectivity and configuration to function correctly.
+#### ai-dial-adapter-vertexai `0.36.0`
 
-> [!NOTE]
-> Documentation warning added regarding H2 usage — A warning note regarding H2 (HTTP/2 or H2 database) usage was added to documentation. Operators should review the upgrade guide for details.
-
-### ai-dial-adapter-vertexai
-
-#### Breaking changes
+##### Breaking changes
 
 **Veo: `pubsub_topic` field removed from config**
 
-The `pubsub_topic` field has been removed from the Veo model configuration. Any deployment that includes this field must remove it before or during upgrade.
+The `pubsub_topic` field has been removed from the Veo model configuration. Any deployment config referencing this field must be updated.
 
 | Previous configuration | Required action |
 |---|---|
-| `pubsub_topic` field present in Veo model config | Remove the `pubsub_topic` field from the Veo model configuration |
+| Veo config includes `pubsub_topic` field | Remove the `pubsub_topic` field from the Veo model configuration |
 
-#### Config / Helm changes
+##### Config / Helm changes
 
 - **Removed** `veo.pubsub_topic`: The `pubsub_topic` field has been removed from the Veo model configuration.
 
-### ai-dial-adapter-openai
+---
 
-#### Deprecated environment variables
+#### ai-dial-adapter-openai `0.40.0`
+
+##### Deprecated environment variables
 
 | Variable | Description |
 |---|---|
-| `DIAL_USE_FILE_STORAGE` | DIAL_USE_FILE_STORAGE is deprecated. No replacement explicitly mentioned in release notes. |
+| `DIAL_USE_FILE_STORAGE` | DIAL_USE_FILE_STORAGE is deprecated. DIAL Storage is now enabled automatically when DIAL_URL is set. |
 
-**Migration:** _DIAL_USE_FILE_STORAGE is set_ → Review deprecation impact; plan to remove this env var in a future upgrade
+**Migration:** _DIAL_USE_FILE_STORAGE explicitly set to enable file storage_ → Remove DIAL_USE_FILE_STORAGE; storage will be enabled automatically when DIAL_URL is set
+**Migration:** _DIAL_USE_FILE_STORAGE explicitly set to disable file storage_ → Verify new automatic behavior does not unintentionally enable storage; unset DIAL_URL if storage should remain disabled
 
-### ai-dial-chat-themes
+---
 
-#### Config / Helm changes
+#### ai-dial-chat-themes `0.16.0`
 
-- **Added** `config.json / bg-inverted`: New 'bg-inverted' property added to config.json for theme configuration.
+##### Config / Helm changes
 
+- **Added** `config.json / bg-inverted`: New 'bg-inverted' property added to config.json theme configuration.
+
+---
